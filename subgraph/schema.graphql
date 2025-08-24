@@ -1,0 +1,19 @@
+type Account @entity(immutable: false) {
+  id: ID!
+  address: Bytes!
+  transferRecordsSent: [TransferRecord!]! @derivedFrom(field: "from")
+  transferRecordsReceived: [TransferRecord!]! @derivedFrom(field: "to")
+  recordCount: BigInt!
+}
+
+type TransferRecord @entity(immutable: true) {
+  id: ID!
+  recordId: Bytes!
+  from: Account!
+  to: Account!
+  value: BigInt!
+  message: String!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}

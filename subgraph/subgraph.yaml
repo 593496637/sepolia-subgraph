@@ -1,0 +1,25 @@
+specVersion: 0.0.5
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: SimpleTransferContract
+    network: sepolia
+    source:
+      address: "0x830B796F55E6A3f86E924297e510B24192A0Ba1c"
+      abi: SimpleTransferContract
+      startBlock: 9053891
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - TransferRecord
+        - Account
+      abis:
+        - name: SimpleTransferContract
+          file: ./abis/SimpleTransferContract.json
+      eventHandlers:
+        - event: TransferRecord(indexed address,indexed address,uint256,uint256,string,bytes32)
+          handler: handleTransferRecord
+      file: ./src/mapping.ts
