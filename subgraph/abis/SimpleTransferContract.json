@@ -8,7 +8,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "value",
+        "name": "transferValue",
         "type": "uint256"
       },
       {
@@ -75,7 +75,7 @@
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "value",
+        "name": "transferValue",
         "type": "uint256"
       },
       {

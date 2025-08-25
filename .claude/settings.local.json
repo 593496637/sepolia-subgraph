@@ -3,7 +3,19 @@
     "allow": [
       "WebFetch(domain:api.studio.thegraph.com)",
       "Bash(npm run lint)",
-      "Bash(pnpm lint:*)"
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(solc:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm format:check:*)",
+      "Bash(pnpm format:*)",
+      "Bash(pnpm code-quality:*)",
+      "Bash(npx solc:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx solhint:*)",
+      "Bash(pnpm codegen:*)",
+      "Bash(pnpm build:*)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,25 +1,59 @@
+# The Graph Subgraph 配置文件
+# 📋 项目说明：Sepolia 测试网转账记录索引器
+# 🎯 功能目标：将智能合约事件转换为可查询的图数据结构
+# 🌐 网络环境：Ethereum Sepolia Testnet
+# 📊 数据源：SimpleTransferContract 智能合约事件
+
+# Subgraph 规范版本，决定支持的功能和语法
 specVersion: 0.0.5
+
+# GraphQL Schema 文件位置，定义数据结构和查询接口
 schema:
   file: ./schema.graphql
+
+# 数据源配置 - 定义要监听的区块链数据
 dataSources:
+  # 以太坊数据源类型
   - kind: ethereum
+    # 数据源名称，用于标识和引用
     name: SimpleTransferContract
+    # 目标网络：Sepolia 测试网
     network: sepolia
+    
+    # 数据源详细信息
     source:
+      # 智能合约地址 - Sepolia 测试网上的合约实例
       address: "0x830B796F55E6A3f86E924297e510B24192A0Ba1c"
+      # 合约 ABI 引用名称
       abi: SimpleTransferContract
+      # 开始监听的区块号 - 合约部署区块，避免扫描无效区块
       startBlock: 9053891
+    
+    # 事件映射配置 - 定义如何处理区块链事件
     mapping:
+      # 映射类型：以太坊事件处理
       kind: ethereum/events
+      # Graph Protocol API 版本
       apiVersion: 0.0.7
+      # 编译目标语言：AssemblyScript（编译为 WebAssembly）
       language: wasm/assemblyscript
+      
+      # 实体类型列表 - 定义数据模型中的实体
       entities:
-        - TransferRecord
-        - Account
+        - TransferRecord  # 转账记录实体
+        - Account        # 账户实体
+      
+      # ABI 文件配置 - 合约接口定义
       abis:
         - name: SimpleTransferContract
           file: ./abis/SimpleTransferContract.json
+      
+      # 事件处理器配置 - 定义事件到处理函数的映射
       eventHandlers:
+        # TransferRecord 事件处理配置
         - event: TransferRecord(indexed address,indexed address,uint256,uint256,string,bytes32)
+          # 对应的处理函数名称
           handler: handleTransferRecord
+      
+      # 映射逻辑文件位置 - 包含事件处理函数的 TypeScript 代码
       file: ./src/mapping.ts

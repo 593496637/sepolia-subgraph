@@ -31,7 +31,7 @@ export class TransferRecord__Params {
     return this._event.parameters[1].value.toAddress();
   }
 
-  get value(): BigInt {
+  get transferValue(): BigInt {
     return this._event.parameters[2].value.toBigInt();
   }
 
@@ -92,13 +92,13 @@ export class SimpleTransferContract extends ethereum.SmartContract {
     return new SimpleTransferContract("SimpleTransferContract", address);
   }
 
-  recordTransfer(to: Address, value: BigInt, message: string): Bytes {
+  recordTransfer(to: Address, transferValue: BigInt, message: string): Bytes {
     let result = super.call(
       "recordTransfer",
       "recordTransfer(address,uint256,string):(bytes32)",
       [
         ethereum.Value.fromAddress(to),
-        ethereum.Value.fromUnsignedBigInt(value),
+        ethereum.Value.fromUnsignedBigInt(transferValue),
         ethereum.Value.fromString(message)
       ]
     );
@@ -108,7 +108,7 @@ export class SimpleTransferContract extends ethereum.SmartContract {
 
   try_recordTransfer(
     to: Address,
-    value: BigInt,
+    transferValue: BigInt,
     message: string
   ): ethereum.CallResult<Bytes> {
     let result = super.tryCall(
@@ -116,7 +116,7 @@ export class SimpleTransferContract extends ethereum.SmartContract {
       "recordTransfer(address,uint256,string):(bytes32)",
       [
         ethereum.Value.fromAddress(to),
-        ethereum.Value.fromUnsignedBigInt(value),
+        ethereum.Value.fromUnsignedBigInt(transferValue),
         ethereum.Value.fromString(message)
       ]
     );
@@ -286,7 +286,7 @@ export class RecordTransferCall__Inputs {
     return this._call.inputValues[0].value.toAddress();
   }
 
-  get value(): BigInt {
+  get transferValue(): BigInt {
     return this._call.inputValues[1].value.toBigInt();
   }
 
