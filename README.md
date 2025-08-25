@@ -412,7 +412,7 @@ pnpm deploy     # 部署到 The Graph Studio
 | 组件 | 地址/端点 | 状态 |
 |------|-----------|------|
 | **智能合约** | `0x830B796F55E6A3f86E924297e510B24192A0Ba1c` | ✅ 已部署 |
-| **Subgraph** | `https://api.studio.thegraph.com/query/119398/sepolia-transactions/v1.1.0` | ✅ 已同步 |
+| **Subgraph** | `https://api.studio.thegraph.com/query/119398/sepolia-transactions/v1.1.1` | ✅ 已同步 |
 | **前端应用** | `http://localhost:5176` | ✅ 运行中 |
 | **起始区块** | `9053891` | ✅ 已配置 |
 

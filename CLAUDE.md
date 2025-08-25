@@ -84,7 +84,7 @@ This is a Web3 educational project demonstrating **direct RPC queries vs The Gra
 - **Target Network**: Sepolia Testnet only
 - **Chain ID**: 11155111
 - **RPC Endpoints**: Multiple public endpoints with automatic failover
-- **Subgraph Endpoint**: `https://api.studio.thegraph.com/query/119398/sepolia-transactions/v1.1.0`
+- **Subgraph Endpoint**: `https://api.studio.thegraph.com/query/119398/sepolia-transactions/v1.1.1`
 
 ## Key Features
 

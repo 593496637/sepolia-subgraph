@@ -15,7 +15,8 @@
       "Bash(npx solhint:*)",
       "Bash(pnpm codegen:*)",
       "Bash(pnpm build:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(pnpm dev:*)"
     ],
     "deny": [],
     "ask": []
