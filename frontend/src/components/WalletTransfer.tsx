@@ -32,6 +32,7 @@ import {
 } from 'wagmi';
 import { parseEther, formatEther } from 'viem';  // Viem 工具函数：解析和格式化以太币
 import type { Connector } from 'wagmi';           // Wagmi 连接器类型定义
+import { str2hex, getHexByteLength } from '../utils/hexUtils'; // 附言编码工具函数
 
 /**
  * WalletTransfer 组件属性接口
@@ -63,6 +64,14 @@ const WalletTransfer: React.FC<WalletTransferProps> = ({ onTransactionSuccess })
    * ⚠️ 注意：需要使用 parseEther 转换为 Wei 单位
    */
   const [amount, setAmount] = useState<string>('');
+  
+  /**
+   * 转账附言状态
+   * 💬 用途：存储用户输入的转账附言信息
+   * 🌍 支持：中文、Emoji、Unicode 字符
+   * 📦 编码：使用 hexUtils 编码为交易 data 字段
+   */
+  const [message, setMessage] = useState<string>('');
   
   /**
    * 转账进行状态标志
@@ -209,7 +218,7 @@ const WalletTransfer: React.FC<WalletTransferProps> = ({ onTransactionSuccess })
   };
 
   /**
-   * 处理 ETH 转账
+   * 处理 ETH 转账（支持附言）
    * 
    * 💸 核心转账逻辑函数
    * 
@@ -219,9 +228,10 @@ const WalletTransfer: React.FC<WalletTransferProps> = ({ onTransactionSuccess })
    * 
    * 🔄 转账流程：
    * 1. 设置转账状态为进行中（禁用按钮）
-   * 2. 调用 sendTransaction 发起转账
-   * 3. 等待用户在钱包中确认
-   * 4. 交易提交后状态管理由 useEffect 处理
+   * 2. 编码附言为十六进制数据（如果有附言）
+   * 3. 调用 sendTransaction 发起转账（带附言数据）
+   * 4. 等待用户在钱包中确认
+   * 5. 交易提交后状态管理由 useEffect 处理
    * 
    * ⚠️ 错误处理：
    * - 捕获所有可能的异常（用户拒绝、网络错误等）
@@ -233,16 +243,30 @@ const WalletTransfer: React.FC<WalletTransferProps> = ({ onTransactionSuccess })
    * - parseEther(amount): 将用户输入的 ETH 转换为 Wei（最小单位）
    *   * 1 ETH = 10^18 Wei
    *   * parseEther("1") = 1000000000000000000n (BigInt)
+   * - str2hex(message): 将附言编码为十六进制数据
    */
   const handleTransfer = async () => {
     if (!toAddress || !amount || !address) return;
 
     try {
       setIsTransferring(true);
-      await sendTransaction({
+      
+      // 准备交易参数
+      const txParams: {
+        to: `0x${string}`;
+        value: bigint;
+        data?: `0x${string}`;
+      } = {
         to: toAddress as `0x${string}`,     // 接收方地址
         value: parseEther(amount),          // 转账金额（Wei 单位）
-      });
+      };
+      
+      // 如果有附言，编码为交易数据
+      if (message.trim()) {
+        txParams.data = str2hex(message.trim()) as `0x${string}`;
+      }
+      
+      await sendTransaction(txParams);
     } catch (error) {
       console.error('Transfer error:', error);
       setIsTransferring(false);  // 失败时重置状态
@@ -281,6 +305,7 @@ const WalletTransfer: React.FC<WalletTransferProps> = ({ onTransactionSuccess })
       setIsTransferring(false);         // 重置转账状态
       setToAddress('');                 // 清空地址输入
       setAmount('');                    // 清空金额输入
+      setMessage('');                   // 清空附言输入
       onTransactionSuccess?.(txHash);   // 触发成功回调（可选）
     }
   }, [isConfirmed, txHash, onTransactionSuccess]);
@@ -329,6 +354,20 @@ const WalletTransfer: React.FC<WalletTransferProps> = ({ onTransactionSuccess })
    */
   const isValidAddress = (addr: string): boolean => {
     return /^0x[a-fA-F0-9]{40}$/.test(addr);
+  };
+
+  /**
+   * 检查是否为智能合约地址
+   * 
+   * ⚠️ 重要提醒：
+   * - 当前智能合约不支持直接接收 ETH
+   * - 向合约地址发送 ETH 会导致交易失败
+   * - 如需与合约交互，请使用"智能合约演示"功能
+   */
+  const isContractAddress = (addr: string): boolean => {
+    // 检查是否为项目中的智能合约地址
+    const CONTRACT_ADDRESS = '0x830B796F55E6A3f86E924297e510B24192A0Ba1c';
+    return addr.toLowerCase() === CONTRACT_ADDRESS.toLowerCase();
   };
 
   /**
@@ -556,6 +595,22 @@ const WalletTransfer: React.FC<WalletTransferProps> = ({ onTransactionSuccess })
                 请输入有效的以太坊地址
               </p>
             )}
+            {toAddress && isValidAddress(toAddress) && isContractAddress(toAddress) && (
+              <div style={{ 
+                color: '#856404', 
+                backgroundColor: '#fff3cd',
+                border: '1px solid #ffeaa7',
+                borderRadius: '8px',
+                padding: '10px',
+                fontSize: '14px',
+                margin: '5px 0 0 0'
+              }}>
+                ⚠️ <strong>注意：</strong>这是智能合约地址！
+                <br />• 普通 ETH 转账会失败，因为合约不接受直接转账
+                <br />• 如需与合约交互，请使用 <strong>"📝 智能合约演示"</strong> 功能
+                <br />• 如需发送带附言的 ETH，请发送到普通钱包地址
+              </div>
+            )}
           </div>
 
           <div style={{ marginBottom: '25px' }}>
@@ -603,6 +658,52 @@ const WalletTransfer: React.FC<WalletTransferProps> = ({ onTransactionSuccess })
                 余额不足
               </p>
             )}
+          </div>
+
+          <div style={{ marginBottom: '25px' }}>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: '8px', 
+              fontWeight: '600', 
+              color: '#495057' 
+            }}>
+              转账附言 (可选)
+            </label>
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="添加转账备注信息...支持中文和 Emoji 🚀"
+              maxLength={200}
+              rows={3}
+              style={{
+                width: '100%',
+                padding: '15px',
+                border: '2px solid #e9ecef',
+                borderRadius: '12px',
+                fontSize: '16px',
+                outline: 'none',
+                transition: 'border-color 0.3s',
+                resize: 'vertical',
+                fontFamily: 'inherit'
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#007bff';
+                e.target.style.boxShadow = '0 0 0 3px rgba(0, 123, 255, 0.1)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#e9ecef';
+                e.target.style.boxShadow = 'none';
+              }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#666', margin: '5px 0 0 0' }}>
+              <span>{message.length}/200 字符</span>
+              {message.trim() && (
+                <span>
+                  编码后约 {getHexByteLength(message)} 字节 
+                  (Gas 费用: +{Math.ceil(getHexByteLength(message) * 16 / 1000)}k)
+                </span>
+              )}
+            </div>
           </div>
 
           <button

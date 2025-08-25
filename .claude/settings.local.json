@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:api.studio.thegraph.com)",
+      "Bash(npm run lint)",
+      "Bash(pnpm lint:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

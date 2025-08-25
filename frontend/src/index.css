@@ -24,10 +24,80 @@ a:hover {
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  box-sizing: border-box;
+}
+
+/* 全局box-sizing规则 */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* App容器优化 */
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* 响应式容器 */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* 响应式网格 */
+.grid {
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+}
+
+.grid-auto {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+/* 响应式表格容器 */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.table-container table {
+  width: 100%;
+  min-width: 800px;
+  border-collapse: collapse;
+  background: white;
+  font-size: 14px;
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 0.5rem;
+  }
+  
+  .grid {
+    gap: 0.75rem;
+  }
+  
+  .grid-auto {
+    grid-template-columns: 1fr;
+  }
+  
+  .table-container table {
+    min-width: 600px;
+    font-size: 12px;
+  }
+  
+  .table-container th,
+  .table-container td {
+    padding: 8px !important;
+  }
 }
 
 h1 {

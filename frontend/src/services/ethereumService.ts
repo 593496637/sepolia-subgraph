@@ -142,7 +142,8 @@ export class EthereumService {
         },
         timestamp: block.timestamp.toString(),   // 区块时间戳（Unix 时间）
         status: receipt.status ? '1' : '0',      // 交易状态：1=成功，0=失败
-        transactionIndex: tx.index!.toString()  // 在区块中的交易索引
+        transactionIndex: tx.index!.toString(),  // 在区块中的交易索引
+        data: tx.data || '0x'                   // 交易数据（可能包含附言信息）
       };
     });
   }
@@ -209,7 +210,8 @@ export class EthereumService {
                     blockNumber: blockNumber.toString(),
                     timestamp: block.timestamp.toString(),
                     status: receipt.status ? '1' : '0',
-                    transactionIndex: transaction.index.toString()
+                    transactionIndex: transaction.index.toString(),
+                    data: transaction.data || '0x'  // 添加交易数据字段
                   });
 
                   // 达到限制数量时退出循环

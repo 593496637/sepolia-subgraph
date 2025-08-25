@@ -69,39 +69,41 @@ interface Transaction {
 }
 
 /**
- * 单个交易查询结果接口
+ * 单个转账记录查询结果接口
  */
 interface TransactionData {
-  transaction: Transaction;
+  transferRecords: Transaction[];
 }
 
 /**
- * 多个交易查询结果接口
+ * 多个转账记录查询结果接口
  */
 interface TransactionsData {
-  transactions: Transaction[];
+  transferRecords: Transaction[];
 }
 
-/**
- * 区块数据接口
- * 用于显示区块基本信息
- */
-interface BlockData {
-  id: string;              // 区块哈希作为 ID
-  number: string;          // 区块号
-  hash: string;            // 区块哈希
-  timestamp: string;       // 区块时间戳
-  gasUsed: string;         // 区块 Gas 使用量
-  gasLimit: string;        // 区块 Gas 限制
-  transactionCount: string; // 区块包含的交易数量
-}
+// BlockData 接口已被移除，因为 Schema 中没有定义 Block 实体
+// /**
+//  * 区块数据接口
+//  * 用于显示区块基本信息
+//  */
+// interface BlockData {
+//   id: string;              // 区块哈希作为 ID
+//   number: string;          // 区块号
+//   hash: string;            // 区块哈希
+//   timestamp: string;       // 区块时间戳
+//   gasUsed: string;         // 区块 Gas 使用量
+//   gasLimit: string;        // 区块 Gas 限制
+//   transactionCount: string; // 区块包含的交易数量
+// }
 
 /**
  * 多个区块查询结果接口
  */
-interface BlocksData {
-  blocks: BlockData[];
-}
+// BlocksData 接口已被移除，因为 Schema 中没有定义 Block 实体
+// interface BlocksData {
+//   blocks: BlockData[];
+// }
 
 /**
  * The Graph 元数据接口
@@ -130,9 +132,9 @@ interface MetaData {
  */
 export const GET_TRANSACTION = gql`
   query GetTransaction($hash: Bytes!) {
-    transaction(id: $hash) {
+    transferRecords(where: { transactionHash: $hash }) {
       id
-      hash
+      recordId
       from {
         address
       }
@@ -140,16 +142,10 @@ export const GET_TRANSACTION = gql`
         address
       }
       value
-      gasUsed
-      gasPrice
-      blockNumber
-      block {
-        hash
-        number
-      }
+      message
       timestamp
-      status
-      transactionIndex
+      blockNumber
+      transactionHash
     }
   }
 `;
@@ -170,9 +166,9 @@ export const GET_TRANSACTION = gql`
  */
 export const GET_TRANSACTIONS = gql`
   query GetTransactions($first: Int = 10, $skip: Int = 0, $orderBy: String = "blockNumber", $orderDirection: String = "desc") {
-    transactions(first: $first, skip: $skip, orderBy: $orderBy, orderDirection: $orderDirection) {
+    transferRecords(first: $first, skip: $skip, orderBy: $orderBy, orderDirection: $orderDirection) {
       id
-      hash
+      recordId
       from {
         address
       }
@@ -180,11 +176,10 @@ export const GET_TRANSACTIONS = gql`
         address
       }
       value
-      gasUsed
-      gasPrice
-      blockNumber
+      message
       timestamp
-      status
+      blockNumber
+      transactionHash
     }
   }
 `;
@@ -201,19 +196,20 @@ export const GET_TRANSACTIONS = gql`
  * - $first: 返回区块数量（默认 10）
  * - $skip: 跳过区块数量（默认 0）
  */
-export const GET_BLOCKS = gql`
-  query GetBlocks($first: Int = 10, $skip: Int = 0) {
-    blocks(first: $first, skip: $skip, orderBy: number, orderDirection: desc) {
-      id
-      number
-      hash
-      timestamp
-      gasUsed
-      gasLimit
-      transactionCount
-    }
-  }
-`;
+// 注意：GET_BLOCKS 查询已被移除，因为 Subgraph Schema 中没有定义 Block 实体
+// export const GET_BLOCKS = gql`
+//   query GetBlocks($first: Int = 10, $skip: Int = 0) {
+//     blocks(first: $first, skip: $skip, orderBy: number, orderDirection: desc) {
+//       id
+//       number
+//       hash
+//       timestamp
+//       gasUsed
+//       gasLimit
+//       transactionCount
+//     }
+//   }
+// `;
 
 /**
  * The Graph 同步状态查询
@@ -310,12 +306,13 @@ export const useTransactionsQuery = (first: number = 10, skip: number = 0, enabl
  * - loading: 加载状态
  * - error: 错误信息
  */
-export const useBlocksQuery = (first: number = 10, skip: number = 0, enabled: boolean = true) => {
-  return useQuery<BlocksData>(GET_BLOCKS, {
-    variables: { first, skip },
-    skip: !enabled,
-  });
-};
+// 注意：useBlocksQuery 已被移除，因为 Subgraph Schema 中没有定义 Block 实体
+// export const useBlocksQuery = (first: number = 10, skip: number = 0, enabled: boolean = true) => {
+//   return useQuery<BlocksData>(GET_BLOCKS, {
+//     variables: { first, skip },
+//     skip: !enabled,
+//   });
+// };
 
 /**
  * The Graph 同步状态查询 Hook

@@ -43,7 +43,7 @@ function App() {
           marginBottom: '2rem',
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)'
         }}>
-          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px', textAlign: 'center' }}>
+          <div className="container" style={{ textAlign: 'center' }}>
             <h1 style={{ 
               margin: 0, 
               fontSize: '2.5rem', 
@@ -67,7 +67,8 @@ function App() {
               display: 'flex',
               justifyContent: 'center',
               gap: '10px',
-              flexWrap: 'wrap'
+              flexWrap: 'wrap',
+              width: '100%'
             }}>
               <button
                 onClick={() => setActiveTab('transaction')}
@@ -141,18 +142,15 @@ function App() {
           </div>
         </header>
 
-        <main style={{
-          maxWidth: '1200px',
-          margin: '0 auto',
-          padding: '0 20px'
-        }}>
+        <main className="container">
           <div style={{
             background: 'rgba(255, 255, 255, 0.95)',
             backdropFilter: 'blur(10px)',
             borderRadius: '20px',
             padding: '2rem',
             boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)',
-            minHeight: '400px'
+            minHeight: '400px',
+            width: '100%'
           }}>
             <ErrorBoundary>
               {activeTab === 'transaction' && <TransactionQuery initialTxHash={pendingTxHash} onHashUsed={() => setPendingTxHash('')} />}

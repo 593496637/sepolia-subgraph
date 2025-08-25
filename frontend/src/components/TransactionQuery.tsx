@@ -24,6 +24,7 @@
 import React, { useState } from 'react';
 import { useTransactionQuery } from '../hooks/useTransactionQuery';  // The Graph GraphQL 查询 Hook
 import { ethereumService } from '../services/ethereumService';      // 直接 RPC 查询服务
+import { hex2str, isValidHex, truncateString } from '../utils/hexUtils'; // 附言解码工具函数
 
 /**
  * 交易查询组件属性接口
@@ -75,6 +76,7 @@ interface RpcTransactionData {
   timestamp: string;         // 交易时间戳
   status: string;            // 交易状态（1=成功，0=失败）
   transactionIndex: string;  // 交易在区块中的索引
+  data?: string;             // 交易数据（可能包含附言）
 }
 
 const TransactionQuery: React.FC<TransactionQueryProps> = ({ initialTxHash, onHashUsed }) => {
@@ -96,6 +98,8 @@ const TransactionQuery: React.FC<TransactionQueryProps> = ({ initialTxHash, onHa
 
   /**
    * 数据源选择状态
+   * 
+   * 💡 默认使用 RPC：由于 The Graph 端点可能不稳定，默认使用 RPC 查询
    * 
    * 🔀 支持的数据源：
    * - 'rpc': 直接从以太坊节点查询
@@ -212,7 +216,10 @@ const TransactionQuery: React.FC<TransactionQueryProps> = ({ initialTxHash, onHa
    * - 渲染逻辑保持一致
    * - 便于后续添加新的数据源
    */
-  const data = dataSource === 'graph' ? graphData : { transaction: rpcData };
+  // 适配新的 transferRecords 数据结构
+  const data = dataSource === 'graph' 
+    ? (graphData?.transferRecords?.[0] ? { transaction: graphData.transferRecords[0] } : null)
+    : { transaction: rpcData };
   
   /**
    * 统一加载状态抽象
@@ -419,6 +426,53 @@ const TransactionQuery: React.FC<TransactionQueryProps> = ({ initialTxHash, onHa
     return date.toLocaleString();                       // 本地化时间字符串
   };
 
+  /**
+   * 解析交易附言函数
+   * 
+   * 💬 功能说明：
+   * - 从交易 data 字段中解析出原始附言内容
+   * - 支持中文、Emoji 和所有 Unicode 字符
+   * - 安全处理各种错误情况
+   * 
+   * 🔍 解析流程：
+   * 1. 检查 data 字段是否存在且不为空
+   * 2. 验证十六进制格式是否正确
+   * 3. 使用 hex2str 工具函数进行解码
+   * 4. 处理解码失败的情况
+   * 
+   * ⚠️ 错误处理：
+   * - 无效的十六进制数据返回 null
+   * - 解码异常时返回 null
+   * - 空数据或只有 0x 的情况返回 null
+   */
+  const parseTransactionMessage = (data?: string): string | null => {
+    // 检查数据是否存在
+    if (!data || data === '0x' || data.trim() === '') {
+      return null;
+    }
+
+    try {
+      // 验证十六进制格式
+      if (!isValidHex(data)) {
+        return null;
+      }
+
+      // 解码十六进制数据为字符串
+      const decoded = hex2str(data);
+      
+      // 检查解码结果是否为空或只有空格
+      if (!decoded || decoded.trim() === '') {
+        return null;
+      }
+
+      return decoded.trim();
+    } catch (error) {
+      // 解码失败时返回 null
+      console.warn('解析交易附言失败:', error);
+      return null;
+    }
+  };
+
   return (
     <div style={{ margin: '0 auto' }}>
       <h2 style={{ 
@@ -594,57 +648,405 @@ const TransactionQuery: React.FC<TransactionQueryProps> = ({ initialTxHash, onHa
         <div style={{
           background: '#ffebee',
           color: '#c62828',
-          padding: '10px',
-          borderRadius: '4px',
-          marginBottom: '20px'
+          padding: '15px',
+          borderRadius: '12px',
+          marginBottom: '20px',
+          border: '1px solid #ffcdd2'
         }}>
-          错误: {error.message}
+          <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+            ⚠️ The Graph 查询错误
+          </div>
+          <div style={{ fontSize: '14px', marginBottom: '8px' }}>
+            错误信息: {error.message}
+          </div>
+          <div style={{ fontSize: '12px', color: '#8d4004', background: '#fff8e1', padding: '8px', borderRadius: '6px' }}>
+            💡 <strong>建议解决方案:</strong>
+            <br />• 切换到 "🚀 直接查询" 模式，使用 RPC 获取实时数据
+            <br />• 稍后重试，或检查 Subgraph 同步状态
+            <br />• 确认交易哈希是否正确，并且交易已被 Subgraph 索引
+          </div>
         </div>
       )}
 
       {data?.transaction && (
         <div style={{
-          background: '#f5f5f5',
-          padding: '20px',
-          borderRadius: '8px',
-          border: '1px solid #ddd'
+          background: 'white',
+          padding: '24px',
+          borderRadius: '12px',
+          border: '2px solid #28a745',
+          boxShadow: '0 4px 20px rgba(40, 167, 69, 0.1)',
+          width: '100%'
         }}>
-          <h2>交易详情</h2>
-          <div style={{ display: 'grid', gap: '10px' }}>
-            <div>
-              <strong>交易哈希:</strong> {data.transaction.hash}
-            </div>
-            <div>
-              <strong>发送方:</strong> {data.transaction.from.address}
-            </div>
-            <div>
-              <strong>接收方:</strong> {data.transaction.to?.address || '合约创建'}
-            </div>
-            <div>
-              <strong>金额:</strong> {formatEther(data.transaction.value)} ETH
-            </div>
-            <div>
-              <strong>Gas 使用量:</strong> {data.transaction.gasUsed}
-            </div>
-            <div>
-              <strong>Gas 价格:</strong> {data.transaction.gasPrice} wei
-            </div>
-            <div>
-              <strong>区块号:</strong> {data.transaction.blockNumber}
-            </div>
-            <div>
-              <strong>区块哈希:</strong> {data.transaction.block.hash}
-            </div>
-            <div>
-              <strong>时间戳:</strong> {formatTimestamp(data.transaction.timestamp)}
-            </div>
-            <div>
-              <strong>状态:</strong> {data.transaction.status === '1' ? '成功' : '失败'}
-            </div>
-            <div>
-              <strong>交易索引:</strong> {data.transaction.transactionIndex}
+          <h2 style={{ 
+            color: '#28a745',
+            fontSize: '20px',
+            fontWeight: 'bold',
+            marginBottom: '20px'
+          }}>
+            ✅ {dataSource === 'graph' ? 'The Graph 查询结果' : 'RPC 查询结果'}
+          </h2>
+
+          {/* 交易哈希 */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ 
+              display: 'block',
+              fontSize: '12px',
+              color: '#666',
+              marginBottom: '4px',
+              fontWeight: '600'
+            }}>
+              📋 交易哈希
+            </label>
+            <div style={{
+              fontFamily: 'monospace',
+              fontSize: '14px',
+              background: '#f8f9fa',
+              padding: '12px',
+              borderRadius: '6px',
+              border: '1px solid #e9ecef',
+              wordBreak: 'break-all',
+              color: '#495057'
+            }}>
+              {data.transaction.hash || data.transaction.transactionHash}
             </div>
           </div>
+
+          {/* 地址信息 */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '16px',
+            marginBottom: '16px'
+          }}>
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '12px',
+                color: '#666',
+                marginBottom: '4px',
+                fontWeight: '600'
+              }}>
+                📤 发送方
+              </label>
+              <div style={{
+                fontFamily: 'monospace',
+                fontSize: '14px',
+                background: '#fff5f5',
+                padding: '12px',
+                borderRadius: '6px',
+                border: '1px solid #fed7d7',
+                wordBreak: 'break-all',
+                color: '#c53030'
+              }}>
+                {data.transaction.from.address}
+              </div>
+            </div>
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '12px',
+                color: '#666',
+                marginBottom: '4px',
+                fontWeight: '600'
+              }}>
+                📥 接收方
+              </label>
+              <div style={{
+                fontFamily: 'monospace',
+                fontSize: '14px',
+                background: '#f0fff4',
+                padding: '12px',
+                borderRadius: '6px',
+                border: '1px solid #c6f6d5',
+                wordBreak: 'break-all',
+                color: '#38a169'
+              }}>
+                {data.transaction.to?.address || '合约创建'}
+              </div>
+            </div>
+          </div>
+
+          {/* 交易详情 */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '16px',
+            marginBottom: '16px'
+          }}>
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '12px',
+                color: '#666',
+                marginBottom: '4px',
+                fontWeight: '600'
+              }}>
+                💰 金额 (ETH)
+              </label>
+              <div style={{
+                fontSize: '18px',
+                fontWeight: '600',
+                color: '#2d3748',
+                padding: '8px 12px',
+                background: '#f7fafc',
+                borderRadius: '6px',
+                border: '1px solid #e2e8f0'
+              }}>
+                {formatEther(data.transaction.value)}
+              </div>
+            </div>
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '12px',
+                color: '#666',
+                marginBottom: '4px',
+                fontWeight: '600'
+              }}>
+                🧱 区块号
+              </label>
+              <div style={{
+                fontSize: '16px',
+                color: '#4a5568',
+                fontFamily: 'monospace',
+                padding: '8px 12px',
+                background: '#f7fafc',
+                borderRadius: '6px',
+                border: '1px solid #e2e8f0'
+              }}>
+                #{data.transaction.blockNumber}
+              </div>
+            </div>
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '12px',
+                color: '#666',
+                marginBottom: '4px',
+                fontWeight: '600'
+              }}>
+                ⏰ 时间
+              </label>
+              <div style={{
+                fontSize: '14px',
+                color: '#4a5568',
+                padding: '8px 12px',
+                background: '#f7fafc',
+                borderRadius: '6px',
+                border: '1px solid #e2e8f0'
+              }}>
+                {formatTimestamp(data.transaction.timestamp)}
+              </div>
+            </div>
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '12px',
+                color: '#666',
+                marginBottom: '4px',
+                fontWeight: '600'
+              }}>
+                ✅ 状态
+              </label>
+              <div style={{
+                fontSize: '14px',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                fontWeight: '600',
+                background: data.transaction.status === '1' ? '#f0fff4' : '#fff5f5',
+                color: data.transaction.status === '1' ? '#38a169' : '#e53e3e',
+                border: `1px solid ${data.transaction.status === '1' ? '#c6f6d5' : '#fed7d7'}`
+              }}>
+                {data.transaction.status === '1' ? '✅ 成功' : '❌ 失败'}
+              </div>
+            </div>
+          </div>
+
+          {/* 技术详情 */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+            gap: '12px',
+            marginBottom: '16px'
+          }}>
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '12px',
+                color: '#666',
+                marginBottom: '4px',
+                fontWeight: '600'
+              }}>
+                ⛽ Gas 使用量
+              </label>
+              <div style={{
+                fontSize: '14px',
+                color: '#4a5568',
+                fontFamily: 'monospace',
+                padding: '4px 0'
+              }}>
+                {data.transaction.gasUsed}
+              </div>
+            </div>
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '12px',
+                color: '#666',
+                marginBottom: '4px',
+                fontWeight: '600'
+              }}>
+                💸 Gas 价格 (wei)
+              </label>
+              <div style={{
+                fontSize: '14px',
+                color: '#4a5568',
+                fontFamily: 'monospace',
+                padding: '4px 0'
+              }}>
+                {data.transaction.gasPrice}
+              </div>
+            </div>
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '12px',
+                color: '#666',
+                marginBottom: '4px',
+                fontWeight: '600'
+              }}>
+                📍 交易索引
+              </label>
+              <div style={{
+                fontSize: '14px',
+                color: '#4a5568',
+                fontFamily: 'monospace',
+                padding: '4px 0'
+              }}>
+                {data.transaction.transactionIndex}
+              </div>
+            </div>
+          </div>
+
+          {/* 区块哈希 */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '12px',
+              color: '#666',
+              marginBottom: '4px',
+              fontWeight: '600'
+            }}>
+              🧱 区块哈希
+            </label>
+            <div style={{
+              fontFamily: 'monospace',
+              fontSize: '14px',
+              background: '#f8f9fa',
+              padding: '12px',
+              borderRadius: '6px',
+              border: '1px solid #e9ecef',
+              wordBreak: 'break-all',
+              color: '#495057'
+            }}>
+              {data.transaction.block.hash}
+            </div>
+          </div>
+          
+          {/* 显示转账附言 */}
+          {(() => {
+              // The Graph 数据中的 message 字段
+              if (dataSource === 'graph' && data.transaction.message) {
+                return (
+                  <div style={{ 
+                    marginTop: '10px',
+                    padding: '15px',
+                    background: 'linear-gradient(135deg, #e8f5e8 0%, #f0f8e8 100%)',
+                    borderRadius: '12px',
+                    border: '1px solid #c3e6cb'
+                  }}>
+                    <strong style={{ color: '#155724' }}>💬 智能合约附言:</strong>
+                    <div style={{ 
+                      marginTop: '8px',
+                      padding: '10px',
+                      background: 'rgba(255, 255, 255, 0.8)',
+                      borderRadius: '8px',
+                      fontSize: '16px',
+                      lineHeight: '1.5',
+                      wordBreak: 'break-word',
+                      color: '#2c5aa0'
+                    }}>
+                      {data.transaction.message}
+                    </div>
+                  </div>
+                );
+              }
+              
+              // RPC 数据中的 data 字段解析
+              if (dataSource === 'rpc') {
+                const txData = (data.transaction as { data?: string }).data;
+                const message = parseTransactionMessage(txData);
+                
+                if (message) {
+                  return (
+                    <div style={{ 
+                      marginTop: '10px',
+                      padding: '15px',
+                      background: 'linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%)',
+                      borderRadius: '12px',
+                      border: '1px solid #e1bee7'
+                    }}>
+                      <strong style={{ color: '#4a148c' }}>💬 ETH 转账附言:</strong>
+                      <div style={{ 
+                        marginTop: '8px',
+                        padding: '10px',
+                        background: 'rgba(255, 255, 255, 0.8)',
+                        borderRadius: '8px',
+                        fontSize: '16px',
+                        lineHeight: '1.5',
+                        wordBreak: 'break-word',
+                        color: '#2c1810'
+                      }}>
+                        {message.length > 100 ? (
+                          <>
+                            <span title={message}>
+                              {truncateString(message, 100)}
+                            </span>
+                            <button
+                              onClick={() => alert(message)}
+                              style={{
+                                marginLeft: '10px',
+                                padding: '4px 12px',
+                                background: '#6a1b9a',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '16px',
+                                fontSize: '12px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              查看全文
+                            </button>
+                          </>
+                        ) : (
+                          message
+                        )}
+                      </div>
+                      <div style={{ 
+                        marginTop: '8px',
+                        fontSize: '12px',
+                        color: '#666',
+                        fontFamily: 'monospace'
+                      }}>
+                        原始数据: {txData ? `${txData.slice(0, 20)}...${txData.slice(-10)}` : '无'}
+                      </div>
+                    </div>
+                  );
+                }
+              }
+              
+              return null;
+            })()}
         </div>
       )}
 
