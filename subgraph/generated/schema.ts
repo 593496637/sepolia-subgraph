@@ -8,7 +8,8 @@ import {
   store,
   Bytes,
   BigInt,
-  BigDecimal
+  BigDecimal,
+  Int8,
 } from "@graphprotocol/graph-ts";
 
 export class Account extends Entity {
@@ -23,7 +24,7 @@ export class Account extends Entity {
     if (id) {
       assert(
         id.kind == ValueKind.STRING,
-        `Entities of type Account must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`
+        `Entities of type Account must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`,
       );
       store.set("Account", id.toString(), this);
     }
@@ -67,7 +68,7 @@ export class Account extends Entity {
     return new TransferRecordLoader(
       "Account",
       this.get("id")!.toString(),
-      "transferRecordsSent"
+      "transferRecordsSent",
     );
   }
 
@@ -75,7 +76,7 @@ export class Account extends Entity {
     return new TransferRecordLoader(
       "Account",
       this.get("id")!.toString(),
-      "transferRecordsReceived"
+      "transferRecordsReceived",
     );
   }
 
@@ -105,7 +106,7 @@ export class TransferRecord extends Entity {
     if (id) {
       assert(
         id.kind == ValueKind.STRING,
-        `Entities of type TransferRecord must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`
+        `Entities of type TransferRecord must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`,
       );
       store.set("TransferRecord", id.toString(), this);
     }
@@ -113,7 +114,7 @@ export class TransferRecord extends Entity {
 
   static loadInBlock(id: string): TransferRecord | null {
     return changetype<TransferRecord | null>(
-      store.get_in_block("TransferRecord", id)
+      store.get_in_block("TransferRecord", id),
     );
   }
 

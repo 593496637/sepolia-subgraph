@@ -7,7 +7,7 @@ import {
   Entity,
   Bytes,
   Address,
-  BigInt
+  BigInt,
 } from "@graphprotocol/graph-ts";
 
 export class TransferRecord extends ethereum.Event {
@@ -99,8 +99,8 @@ export class SimpleTransferContract extends ethereum.SmartContract {
       [
         ethereum.Value.fromAddress(to),
         ethereum.Value.fromUnsignedBigInt(transferValue),
-        ethereum.Value.fromString(message)
-      ]
+        ethereum.Value.fromString(message),
+      ],
     );
 
     return result[0].toBytes();
@@ -109,7 +109,7 @@ export class SimpleTransferContract extends ethereum.SmartContract {
   try_recordTransfer(
     to: Address,
     transferValue: BigInt,
-    message: string
+    message: string,
   ): ethereum.CallResult<Bytes> {
     let result = super.tryCall(
       "recordTransfer",
@@ -117,8 +117,8 @@ export class SimpleTransferContract extends ethereum.SmartContract {
       [
         ethereum.Value.fromAddress(to),
         ethereum.Value.fromUnsignedBigInt(transferValue),
-        ethereum.Value.fromString(message)
-      ]
+        ethereum.Value.fromString(message),
+      ],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -130,7 +130,7 @@ export class SimpleTransferContract extends ethereum.SmartContract {
   batchRecordTransfer(
     recipients: Array<Address>,
     values: Array<BigInt>,
-    messages: Array<string>
+    messages: Array<string>,
   ): Array<Bytes> {
     let result = super.call(
       "batchRecordTransfer",
@@ -138,8 +138,8 @@ export class SimpleTransferContract extends ethereum.SmartContract {
       [
         ethereum.Value.fromAddressArray(recipients),
         ethereum.Value.fromUnsignedBigIntArray(values),
-        ethereum.Value.fromStringArray(messages)
-      ]
+        ethereum.Value.fromStringArray(messages),
+      ],
     );
 
     return result[0].toBytesArray();
@@ -148,7 +148,7 @@ export class SimpleTransferContract extends ethereum.SmartContract {
   try_batchRecordTransfer(
     recipients: Array<Address>,
     values: Array<BigInt>,
-    messages: Array<string>
+    messages: Array<string>,
   ): ethereum.CallResult<Array<Bytes>> {
     let result = super.tryCall(
       "batchRecordTransfer",
@@ -156,8 +156,8 @@ export class SimpleTransferContract extends ethereum.SmartContract {
       [
         ethereum.Value.fromAddressArray(recipients),
         ethereum.Value.fromUnsignedBigIntArray(values),
-        ethereum.Value.fromStringArray(messages)
-      ]
+        ethereum.Value.fromStringArray(messages),
+      ],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -185,7 +185,7 @@ export class SimpleTransferContract extends ethereum.SmartContract {
     let result = super.call(
       "userRecordCount",
       "userRecordCount(address):(uint256)",
-      [ethereum.Value.fromAddress(param0)]
+      [ethereum.Value.fromAddress(param0)],
     );
 
     return result[0].toBigInt();
@@ -195,7 +195,7 @@ export class SimpleTransferContract extends ethereum.SmartContract {
     let result = super.tryCall(
       "userRecordCount",
       "userRecordCount(address):(uint256)",
-      [ethereum.Value.fromAddress(param0)]
+      [ethereum.Value.fromAddress(param0)],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -208,7 +208,7 @@ export class SimpleTransferContract extends ethereum.SmartContract {
     let result = super.call(
       "getUserRecordCount",
       "getUserRecordCount(address):(uint256)",
-      [ethereum.Value.fromAddress(user)]
+      [ethereum.Value.fromAddress(user)],
     );
 
     return result[0].toBigInt();
@@ -218,7 +218,7 @@ export class SimpleTransferContract extends ethereum.SmartContract {
     let result = super.tryCall(
       "getUserRecordCount",
       "getUserRecordCount(address):(uint256)",
-      [ethereum.Value.fromAddress(user)]
+      [ethereum.Value.fromAddress(user)],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -231,24 +231,22 @@ export class SimpleTransferContract extends ethereum.SmartContract {
     let result = super.call(
       "getContractInfo",
       "getContractInfo():(uint256,address,uint256,uint256)",
-      []
+      [],
     );
 
     return new SimpleTransferContract__getContractInfoResult(
       result[0].toBigInt(),
       result[1].toAddress(),
       result[2].toBigInt(),
-      result[3].toBigInt()
+      result[3].toBigInt(),
     );
   }
 
-  try_getContractInfo(): ethereum.CallResult<
-    SimpleTransferContract__getContractInfoResult
-  > {
+  try_getContractInfo(): ethereum.CallResult<SimpleTransferContract__getContractInfoResult> {
     let result = super.tryCall(
       "getContractInfo",
       "getContractInfo():(uint256,address,uint256,uint256)",
-      []
+      [],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -259,8 +257,8 @@ export class SimpleTransferContract extends ethereum.SmartContract {
         value[0].toBigInt(),
         value[1].toAddress(),
         value[2].toBigInt(),
-        value[3].toBigInt()
-      )
+        value[3].toBigInt(),
+      ),
     );
   }
 }
