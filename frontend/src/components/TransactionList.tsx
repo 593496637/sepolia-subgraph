@@ -8,12 +8,13 @@ interface Account {
 
 interface Transaction {
   id: string;
-  recordId: string;
-  transactionHash: string;
+  recordId?: string;        // 可选，因为RPC数据可能没有
+  transactionHash?: string; // 可选，适配不同数据源
+  hash?: string;           // 可选，适配RPC数据
   from: Account;
-  to?: Account;
+  to?: Account;            // 可选，合约创建交易可能没有
   value: string;
-  message: string;
+  message?: string;        // 可选，不是所有交易都有附言
   blockNumber: string;
   timestamp: string;
 }
@@ -269,7 +270,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ enabled = true }) => 
                     wordBreak: 'break-all',
                     color: '#495057'
                   }}>
-                    {formatHash(tx.transactionHash) || 'N/A'}
+                    {formatHash(tx.transactionHash || tx.hash || '') || 'N/A'}
                   </div>
                 </div>
 
@@ -323,7 +324,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ enabled = true }) => 
                       wordBreak: 'break-all',
                       color: '#38a169'
                     }}>
-                      {formatAddress(tx.to?.address) || '合约创建'}
+                      {formatAddress(tx.to?.address || '') || '合约创建'}
                     </div>
                   </div>
                 </div>

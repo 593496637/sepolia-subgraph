@@ -24,7 +24,7 @@
 import React, { useState } from 'react';
 import { useTransactionQuery } from '../hooks/useTransactionQuery';  // The Graph GraphQL 查询 Hook
 import { ethereumService } from '../services/ethereumService';      // 直接 RPC 查询服务
-import { hex2str, isValidHex, truncateString } from '../utils/hexUtils'; // 附言解码工具函数
+import { truncateString } from '../utils/hexUtils'; // 工具函数
 
 /**
  * 交易查询组件属性接口
@@ -77,6 +77,9 @@ interface RpcTransactionData {
   status: string;            // 交易状态（1=成功，0=失败）
   transactionIndex: string;  // 交易在区块中的索引
   data?: string;             // 交易数据（可能包含附言）
+  message?: string;          // 附言信息（适配The Graph数据结构）
+  transactionHash?: string;  // 适配The Graph字段名
+  recordId?: string;         // 适配The Graph字段
 }
 
 const TransactionQuery: React.FC<TransactionQueryProps> = ({ initialTxHash, onHashUsed }) => {
@@ -218,8 +221,21 @@ const TransactionQuery: React.FC<TransactionQueryProps> = ({ initialTxHash, onHa
    */
   // 适配新的 transferRecords 数据结构
   const data = dataSource === 'graph' 
-    ? (graphData?.transferRecords?.[0] ? { transaction: graphData.transferRecords[0] } : null)
-    : { transaction: rpcData };
+    ? (graphData?.transferRecords?.[0] ? { 
+        transaction: {
+          ...graphData.transferRecords[0],
+          hash: graphData.transferRecords[0].transactionHash,
+          block: {
+            hash: 'N/A', // The Graph 数据中没有区块哈希
+            number: graphData.transferRecords[0].blockNumber
+          },
+          status: '1', // TransferRecord 只记录成功的交易
+          gasUsed: 'N/A', // The Graph 数据中没有 Gas 信息
+          gasPrice: 'N/A',
+          transactionIndex: 'N/A'
+        }
+      } : null)
+    : (rpcData ? { transaction: rpcData } : null);
   
   /**
    * 统一加载状态抽象
@@ -427,48 +443,62 @@ const TransactionQuery: React.FC<TransactionQueryProps> = ({ initialTxHash, onHa
   };
 
   /**
-   * 解析交易附言函数
+   * 解析智能合约调用数据中的附言
    * 
    * 💬 功能说明：
-   * - 从交易 data 字段中解析出原始附言内容
+   * - 解析 recordTransfer 函数调用中的 message 参数
+   * - 从 ABI 编码的数据中提取字符串参数
    * - 支持中文、Emoji 和所有 Unicode 字符
-   * - 安全处理各种错误情况
    * 
    * 🔍 解析流程：
-   * 1. 检查 data 字段是否存在且不为空
-   * 2. 验证十六进制格式是否正确
-   * 3. 使用 hex2str 工具函数进行解码
-   * 4. 处理解码失败的情况
+   * 1. 检查是否为 recordTransfer 函数调用 (0x749182e5)
+   * 2. 解析 ABI 编码的参数：address to, uint256 transferValue, string message
+   * 3. 提取 message 字符串参数并解码
    * 
    * ⚠️ 错误处理：
-   * - 无效的十六进制数据返回 null
-   * - 解码异常时返回 null
-   * - 空数据或只有 0x 的情况返回 null
+   * - 非 recordTransfer 调用返回 null
+   * - 解码失败时返回 null
    */
-  const parseTransactionMessage = (data?: string): string | null => {
+  const parseContractCallMessage = (inputData?: string): string | null => {
     // 检查数据是否存在
-    if (!data || data === '0x' || data.trim() === '') {
+    if (!inputData || inputData === '0x' || inputData.length < 10) {
       return null;
     }
 
     try {
-      // 验证十六进制格式
-      if (!isValidHex(data)) {
-        return null;
+      // 检查是否为 recordTransfer 函数调用 (function selector: 0x749182e5)
+      const functionSelector = inputData.slice(0, 10).toLowerCase();
+      if (functionSelector !== '0x749182e5') {
+        return null; // 不是我们关心的函数调用
       }
 
-      // 解码十六进制数据为字符串
-      const decoded = hex2str(data);
+      // 去掉函数选择器，获取参数数据
+      const paramData = inputData.slice(10);
       
-      // 检查解码结果是否为空或只有空格
-      if (!decoded || decoded.trim() === '') {
-        return null;
+      // ABI 编码的参数：address(32字节) + uint256(32字节) + string_offset(32字节) + string_length(32字节) + string_data
+      // string 参数的偏移量在第3个32字节位置（128-192）
+      const stringOffsetHex = paramData.slice(128, 192); // 第3个32字节
+      const stringOffsetBytes = parseInt(stringOffsetHex, 16); // 偏移量（字节数）
+      const stringOffsetChars = stringOffsetBytes * 2; // 转换为字符位置(每字节=2字符)
+      
+      // 从偏移位置读取字符串长度(32字节)
+      const stringLengthHex = paramData.slice(stringOffsetChars, stringOffsetChars + 64);
+      const stringLengthBytes = parseInt(stringLengthHex, 16); // 字符串长度（字节数）
+      const stringLengthChars = stringLengthBytes * 2; // 转换为字符长度
+      
+      // 提取字符串数据
+      const stringDataHex = paramData.slice(stringOffsetChars + 64, stringOffsetChars + 64 + stringLengthChars);
+      
+      // 将十六进制转换为UTF-8字符串（处理中文等多字节字符）
+      const bytes = [];
+      for (let i = 0; i < stringDataHex.length; i += 2) {
+        bytes.push(parseInt(stringDataHex.substr(i, 2), 16));
       }
-
-      return decoded.trim();
+      const message = new TextDecoder('utf-8').decode(new Uint8Array(bytes));
+      
+      return message.trim() || null;
     } catch (error) {
-      // 解码失败时返回 null
-      console.warn('解析交易附言失败:', error);
+      console.warn('解析智能合约调用附言失败:', error);
       return null;
     }
   };
@@ -707,7 +737,7 @@ const TransactionQuery: React.FC<TransactionQueryProps> = ({ initialTxHash, onHa
               wordBreak: 'break-all',
               color: '#495057'
             }}>
-              {data.transaction.hash || data.transaction.transactionHash}
+              {data.transaction.hash || (data.transaction as any).transactionHash || 'N/A'}
             </div>
           </div>
 
@@ -885,7 +915,13 @@ const TransactionQuery: React.FC<TransactionQueryProps> = ({ initialTxHash, onHa
                 fontFamily: 'monospace',
                 padding: '4px 0'
               }}>
-                {data.transaction.gasUsed}
+                {data.transaction.gasUsed === 'N/A' ? (
+                  <span style={{ fontStyle: 'italic', color: '#999' }}>
+                    📊 The Graph 数据源不提供
+                  </span>
+                ) : (
+                  data.transaction.gasUsed
+                )}
               </div>
             </div>
             <div>
@@ -904,7 +940,13 @@ const TransactionQuery: React.FC<TransactionQueryProps> = ({ initialTxHash, onHa
                 fontFamily: 'monospace',
                 padding: '4px 0'
               }}>
-                {data.transaction.gasPrice}
+                {data.transaction.gasPrice === 'N/A' ? (
+                  <span style={{ fontStyle: 'italic', color: '#999' }}>
+                    📊 The Graph 数据源不提供
+                  </span>
+                ) : (
+                  data.transaction.gasPrice
+                )}
               </div>
             </div>
             <div>
@@ -923,7 +965,13 @@ const TransactionQuery: React.FC<TransactionQueryProps> = ({ initialTxHash, onHa
                 fontFamily: 'monospace',
                 padding: '4px 0'
               }}>
-                {data.transaction.transactionIndex}
+                {data.transaction.transactionIndex === 'N/A' ? (
+                  <span style={{ fontStyle: 'italic', color: '#999' }}>
+                    📊 The Graph 数据源不提供
+                  </span>
+                ) : (
+                  data.transaction.transactionIndex
+                )}
               </div>
             </div>
           </div>
@@ -949,7 +997,13 @@ const TransactionQuery: React.FC<TransactionQueryProps> = ({ initialTxHash, onHa
               wordBreak: 'break-all',
               color: '#495057'
             }}>
-              {data.transaction.block.hash}
+              {data.transaction.block.hash === 'N/A' ? (
+                <span style={{ fontStyle: 'italic', color: '#999' }}>
+                  📊 The Graph 数据源暂不提供区块哈希信息
+                </span>
+              ) : (
+                data.transaction.block.hash
+              )}
             </div>
           </div>
           
@@ -982,12 +1036,13 @@ const TransactionQuery: React.FC<TransactionQueryProps> = ({ initialTxHash, onHa
                 );
               }
               
-              // RPC 数据中的 data 字段解析
+              // RPC 数据中的 Input Data 解析
               if (dataSource === 'rpc') {
                 const txData = (data.transaction as { data?: string }).data;
-                const message = parseTransactionMessage(txData);
+                const parsedMessage = parseContractCallMessage(txData);
                 
-                if (message) {
+                if (parsedMessage) {
+                  // 如果成功解析出附言，显示解析后的消息
                   return (
                     <div style={{ 
                       marginTop: '10px',
@@ -996,7 +1051,7 @@ const TransactionQuery: React.FC<TransactionQueryProps> = ({ initialTxHash, onHa
                       borderRadius: '12px',
                       border: '1px solid #e1bee7'
                     }}>
-                      <strong style={{ color: '#4a148c' }}>💬 ETH 转账附言:</strong>
+                      <strong style={{ color: '#4a148c' }}>💬 智能合约附言 (从 Input Data 解析):</strong>
                       <div style={{ 
                         marginTop: '8px',
                         padding: '10px',
@@ -1007,13 +1062,13 @@ const TransactionQuery: React.FC<TransactionQueryProps> = ({ initialTxHash, onHa
                         wordBreak: 'break-word',
                         color: '#2c1810'
                       }}>
-                        {message.length > 100 ? (
+                        {parsedMessage.length > 100 ? (
                           <>
-                            <span title={message}>
-                              {truncateString(message, 100)}
+                            <span title={parsedMessage}>
+                              {truncateString(parsedMessage, 100)}
                             </span>
                             <button
-                              onClick={() => alert(message)}
+                              onClick={() => alert(parsedMessage)}
                               style={{
                                 marginLeft: '10px',
                                 padding: '4px 12px',
@@ -1029,16 +1084,50 @@ const TransactionQuery: React.FC<TransactionQueryProps> = ({ initialTxHash, onHa
                             </button>
                           </>
                         ) : (
-                          message
+                          parsedMessage
                         )}
                       </div>
                       <div style={{ 
                         marginTop: '8px',
-                        fontSize: '12px',
+                        fontSize: '11px',
                         color: '#666',
-                        fontFamily: 'monospace'
+                        fontStyle: 'italic'
                       }}>
-                        原始数据: {txData ? `${txData.slice(0, 20)}...${txData.slice(-10)}` : '无'}
+                        🔍 从 recordTransfer 函数调用的 Input Data 中解析获得
+                      </div>
+                    </div>
+                  );
+                } else if (txData && txData !== '0x' && txData.length > 2) {
+                  // 如果有Input Data但无法解析，显示原始数据
+                  return (
+                    <div style={{ 
+                      marginTop: '10px',
+                      padding: '15px',
+                      background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
+                      borderRadius: '12px',
+                      border: '1px solid #dee2e6'
+                    }}>
+                      <strong style={{ color: '#495057' }}>📄 智能合约调用数据 (Input Data):</strong>
+                      <div style={{ 
+                        marginTop: '8px',
+                        padding: '10px',
+                        background: 'rgba(255, 255, 255, 0.8)',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        lineHeight: '1.5',
+                        wordBreak: 'break-all',
+                        fontFamily: 'monospace',
+                        color: '#2c1810'
+                      }}>
+                        {txData}
+                      </div>
+                      <div style={{ 
+                        marginTop: '8px',
+                        fontSize: '11px',
+                        color: '#666',
+                        fontStyle: 'italic'
+                      }}>
+                        💡 无法解析的智能合约调用数据（非 recordTransfer 函数或格式异常）
                       </div>
                     </div>
                   );

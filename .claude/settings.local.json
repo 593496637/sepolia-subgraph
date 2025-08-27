@@ -16,7 +16,9 @@
       "Bash(pnpm codegen:*)",
       "Bash(pnpm build:*)",
       "Bash(node:*)",
-      "Bash(pnpm dev:*)"
+      "Bash(pnpm dev:*)",
+      "Bash(pnpm run:*)",
+      "Bash(pnpm exec tsc:*)"
     ],
     "deny": [],
     "ask": []

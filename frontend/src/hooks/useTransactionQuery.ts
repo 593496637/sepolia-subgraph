@@ -38,34 +38,38 @@ interface Block {
 
 /**
  * 交易信息接口
- * 对应 The Graph Schema 中的 Transaction 实体
+ * 对应 The Graph Schema 中的 TransferRecord 实体
  * 
  * 📊 字段说明：
- * - id: 唯一标识符（通常是交易哈希）
- * - hash: 交易哈希值
+ * - id: 唯一标识符（通常是交易哈希+日志索引）
+ * - hash: 交易哈希值（从transactionHash获取）
+ * - transactionHash: 原始交易哈希字段
  * - from: 发送方账户信息
- * - to: 接收方账户信息（可选，合约创建时为空）
+ * - to: 接收方账户信息
  * - value: 转账金额（wei 单位）
- * - gasUsed: 实际消耗的 Gas
- * - gasPrice: Gas 价格
+ * - message: 转账附言信息
+ * - gasUsed: 实际消耗的 Gas（RPC查询才有）
+ * - gasPrice: Gas 价格（RPC查询才有）
  * - blockNumber: 所在区块号
  * - timestamp: 交易时间戳
  * - status: 交易状态（1=成功，0=失败）
- * - transactionIndex: 在区块中的索引位置
+ * - transactionIndex: 在区块中的索引位置（RPC查询才有）
  */
 interface Transaction {
   id: string;
-  hash: string;
+  hash?: string;          // 适配字段，可能来自transactionHash
+  transactionHash?: string; // The Graph原始字段
   from: Account;
-  to?: Account;           // 可选，合约创建交易没有 to 地址
+  to: Account;            // TransferRecord中to是必需的
   value: string;
-  gasUsed: string;
-  gasPrice: string;
+  message?: string;       // 转账附言
+  gasUsed?: string;       // 可选，RPC查询才有
+  gasPrice?: string;      // 可选，RPC查询才有
   blockNumber: string;
-  block: Block;
+  block?: Block;          // 可选，适配RPC数据结构
   timestamp: string;
-  status: string;
-  transactionIndex: string;
+  status?: string;        // 可选，适配RPC数据结构
+  transactionIndex?: string; // 可选，RPC查询才有
 }
 
 /**
